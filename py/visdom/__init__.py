@@ -15,6 +15,8 @@ import threading
 import websocket  # type: ignore
 import json
 import hashlib
+import base64
+import numpy as np
 
 try:
     # for after python 3.8
@@ -1064,6 +1066,25 @@ class Visdom(object):
                 width = width.replace("pt", "00")
                 opts["width"] = 1.35 * int(math.ceil(float(width)))
         return self.svg(svgstr=svg, opts=opts, env=env, win=win)
+    
+    def _decode_binary_arrays(self, obj):
+        """
+        Recursively decode Plotly 6 binary array encoding
+        ({"dtype": "...", "bdata": "..."}) into Python lists
+        so that older Plotly.js versions can render them.
+        """
+        if isinstance(obj, dict):
+            # Detect Plotly 6 binary encoding structure
+            if "dtype" in obj and "bdata" in obj:
+                raw = base64.b64decode(obj["bdata"])
+                arr = np.frombuffer(raw, dtype=np.dtype(obj["dtype"]))
+                return arr.tolist()
+            else:
+                return {k: self._decode_binary_arrays(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._decode_binary_arrays(i) for i in obj]
+        else:
+            return obj
 
     def plotlyplot(self, figure, win=None, env=None):
         """
@@ -1077,31 +1098,24 @@ class Visdom(object):
         try:
             import plotly
 
-            # We do a round-trip of JSON encoding and decoding to make use of
-            # the Plotly JSON Encoder. The JSON encoder deals with converting
-            # numpy arrays to Python lists and several other edge cases.
             figure_dict = json.loads(
                 json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
             )
 
-            # If opts title is not added, the title is not added to the top right of the window.
-            # We add the paramater to opts manually if it exists.
+            figure_dict = self._decode_binary_arrays(figure_dict)
             opts = dict()
-            if "title" in figure_dict["layout"]:
+            if "layout" in figure_dict and "title" in figure_dict["layout"]:
                 title_prop = figure_dict["layout"]["title"]
 
-                # The title is now officially under a 'text' subproperty. Previously, the property
-                # itself could also directly reference the title.
-                # Although this latter behavior is now deprecated, we support both possibilities.
-                # Docs reference: https://plot.ly/python/reference/#layout-title-text
                 opts["title"] = (
-                    title_prop["text"] if "text" in title_prop else title_prop
+                    title_prop["text"] if isinstance(title_prop, dict) and "text" in title_prop
+                    else title_prop
                 )
 
             return self._send(
                 {
-                    "data": figure_dict["data"],
-                    "layout": figure_dict["layout"],
+                    "data": figure_dict.get("data"),
+                    "layout": figure_dict.get("layout"),
                     "win": win,
                     "eid": env,
                     "opts": opts,
