@@ -1076,13 +1076,19 @@ class Visdom(object):
         if isinstance(obj, dict):
             # Detect Plotly 6 binary encoding structure
             if "dtype" in obj and "bdata" in obj:
-                raw = base64.b64decode(obj["bdata"])
-                arr = np.frombuffer(raw, dtype=np.dtype(obj["dtype"]))
-                return arr.tolist()
+                try:
+                    raw = base64.b64decode(obj["bdata"])
+                    arr = np.frombuffer(raw, dtype=np.dtype(obj["dtype"]))
+                    return arr.tolist()
+                except Exception:
+                    # If decoding fails, return original object unchanged
+                    return obj
             else:
                 return {k: self._decode_binary_arrays(v) for k, v in obj.items()}
         elif isinstance(obj, list):
             return [self._decode_binary_arrays(i) for i in obj]
+        elif isinstance(obj, tuple):  # <-- handles future container case
+            return tuple(self._decode_binary_arrays(i) for i in obj)
         else:
             return obj
 
@@ -1114,8 +1120,8 @@ class Visdom(object):
 
             return self._send(
                 {
-                    "data": figure_dict.get("data"),
-                    "layout": figure_dict.get("layout"),
+                    "data": figure_dict["data"],
+                    "layout": figure_dict["layout"],
                     "win": win,
                     "eid": env,
                     "opts": opts,
