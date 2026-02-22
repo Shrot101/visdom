@@ -60,9 +60,7 @@ try:
         perplexity = (
             50
             if num_entities >= 150
-            else num_entities // 3
-            if num_entities >= 21
-            else 7
+            else num_entities // 3 if num_entities >= 21 else 7
         )
         Y = bhtsne.run_bh_tsne(
             X, initial_dims=X.shape[1], perplexity=perplexity, verbose=True
@@ -179,9 +177,11 @@ def _axisformat(xy, opts):
         return {
             "type": opts.get(xy + "type"),
             "title": opts.get(xy + "label"),
-            "range": [opts.get(xy + "tickmin"), opts.get(xy + "tickmax")]
-            if has_ticks
-            else None,
+            "range": (
+                [opts.get(xy + "tickmin"), opts.get(xy + "tickmax")]
+                if has_ticks
+                else None
+            ),
             "tickvals": opts.get(xy + "tickvals"),
             "ticktext": opts.get(xy + "ticklabels"),
             "dtick": opts.get(xy + "tickstep"),
@@ -209,17 +209,21 @@ def _axisformat3d(xyz, opts):
         return {
             "type": opts.get(xyz + "type"),
             "title": opts.get(xyz + "label"),
-            "range": [opts.get(xyz + "tickmin"), opts.get(xyz + "tickmax")]
-            if has_ticks
-            else None,
+            "range": (
+                [opts.get(xyz + "tickmin"), opts.get(xyz + "tickmax")]
+                if has_ticks
+                else None
+            ),
             "tickvals": opts.get(xyz + "tickvals"),
             "ticktext": opts.get(xyz + "ticklabels"),
             "nticks": (
-                (opts.get(xyz + "tickmax") - opts.get(xyz + "tickmin"))
-                / opts.get(xyz + "tickstep")
-            )
-            if has_step
-            else None,
+                (
+                    (opts.get(xyz + "tickmax") - opts.get(xyz + "tickmin"))
+                    / opts.get(xyz + "tickstep")
+                )
+                if has_step
+                else None
+            ),
             "tickfont": opts.get(xyz + "tickfont"),
         }
 
@@ -1064,7 +1068,7 @@ class Visdom(object):
                 width = width.replace("pt", "00")
                 opts["width"] = 1.35 * int(math.ceil(float(width)))
         return self.svg(svgstr=svg, opts=opts, env=env, win=win)
-    
+
     def _decode_binary_arrays(self, obj):
         """
         Recursively decode Plotly 6 binary array encoding
@@ -1112,7 +1116,8 @@ class Visdom(object):
                 title_prop = figure_dict["layout"]["title"]
 
                 opts["title"] = (
-                    title_prop["text"] if isinstance(title_prop, dict) and "text" in title_prop
+                    title_prop["text"]
+                    if isinstance(title_prop, dict) and "text" in title_prop
                     else title_prop
                 )
 
@@ -1690,9 +1695,9 @@ class Visdom(object):
                     "x": nan2none(X.take(0, 1)[ind].tolist()),
                     "y": nan2none(X.take(1, 1)[ind].tolist()),
                     "name": trace_name,
-                    "type": "scatter3d"
-                    if is3d
-                    else ("scattergl" if use_gl else "scatter"),
+                    "type": (
+                        "scatter3d" if is3d else ("scattergl" if use_gl else "scatter")
+                    ),
                     "mode": opts.get("mode"),
                     "text": L[ind].tolist() if L is not None else None,
                     "textposition": "right",
