@@ -15,8 +15,6 @@ import threading
 import websocket  # type: ignore
 import json
 import hashlib
-import base64
-import numpy as np
 
 try:
     # for after python 3.8
@@ -1120,8 +1118,8 @@ class Visdom(object):
 
             return self._send(
                 {
-                    "data": figure_dict["data"],
-                    "layout": figure_dict["layout"],
+                    "data": figure_dict.get("data") or [],
+                    "layout": figure_dict.get("layout") or {},
                     "win": win,
                     "eid": env,
                     "opts": opts,
