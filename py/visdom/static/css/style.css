@@ -53,7 +53,10 @@ h1 {
 
 .navbar {min-height:30px !important;}
 
-.navbar-form {margin-top:0px !important;}
+.navbar-form {
+  margin-top:0px !important;
+  overflow: auto;
+}
 
 .no-focus {
   border-color: transparent;
